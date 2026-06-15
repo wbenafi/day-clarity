@@ -1,4 +1,15 @@
-import type { DailyClose, NewDailyClose, NewWorkItem, Project, WorkItem } from '../types'
+import {
+  cloneDefaultBoardSections,
+  normalizeBoardSections,
+} from '../boardSections'
+import type {
+  BoardSection,
+  DailyClose,
+  NewDailyClose,
+  NewWorkItem,
+  Project,
+  WorkItem,
+} from '../types'
 import { normalizeOptional } from './optional'
 
 const defaultProjectName = 'Initial Project'
@@ -7,12 +18,18 @@ const workItemsKey = 'dayclarity.workItems'
 const dailyClosesKey = 'dayclarity.dailyCloses'
 const projectsKey = 'dayclarity.projects'
 
-type LegacyWorkItem = Omit<WorkItem, 'projectId'> & { projectId?: string }
+type LegacyProject = Omit<Project, 'boardSections'> & {
+  boardSections?: BoardSection[]
+}
+type LegacyWorkItem = Omit<WorkItem, 'category' | 'projectId'> & {
+  category?: string
+  projectId?: string
+}
 type LegacyDailyClose = Omit<DailyClose, 'projectId'> & { projectId?: string }
 
 export async function ensureDefaultProject() {
   const now = Date.now()
-  const projects = readStore<Project>(projectsKey)
+  const projects = readStore<LegacyProject>(projectsKey)
   let defaultProject = projects.find(
     (project) => project.name === defaultProjectName && !project.archivedAt,
   )
@@ -23,6 +40,7 @@ export async function ensureDefaultProject() {
   if (!defaultProject && legacyDefaultProject) {
     defaultProject = {
       ...legacyDefaultProject,
+      boardSections: normalizeBoardSections(legacyDefaultProject.boardSections),
       name: defaultProjectName,
       updatedAt: now,
     }
@@ -36,17 +54,35 @@ export async function ensureDefaultProject() {
     defaultProject = {
       id: crypto.randomUUID(),
       name: defaultProjectName,
+      boardSections: cloneDefaultBoardSections(),
       createdAt: now,
       updatedAt: now,
     }
     writeStore(projectsKey, [...projects, defaultProject])
   }
 
-  backfillLocalProjectIds(defaultProject.id)
-  return defaultProject
+  migrateLocalStorage(defaultProject.id)
+  const migratedDefaultProject = readStore<Project>(projectsKey).find(
+    (project) => project.id === defaultProject.id,
+  )
+
+  if (!migratedDefaultProject) throw new Error('Unable to create default project.')
+  return migratedDefaultProject
 }
 
 export async function listProjects() {
+  const existingProjects = readStore<LegacyProject>(projectsKey)
+
+  if (existingProjects.length === 0) {
+    return [await ensureDefaultProject()]
+  }
+
+  const defaultProject =
+    existingProjects.find(
+      (project) => project.name === defaultProjectName && !project.archivedAt,
+    ) ?? existingProjects.find((project) => !project.archivedAt)
+  if (defaultProject) migrateLocalStorage(defaultProject.id)
+
   const projects = readStore<Project>(projectsKey).filter(
     (project) => !project.archivedAt,
   )
@@ -66,6 +102,7 @@ export async function createProject(name: string) {
   const project: Project = {
     id: crypto.randomUUID(),
     name: trimmedName,
+    boardSections: cloneDefaultBoardSections(),
     createdAt: now,
     updatedAt: now,
   }
@@ -135,6 +172,32 @@ export async function archiveWorkItem(id: string) {
   )
 }
 
+export async function countWorkItemsBySection(projectId: string, sectionId: string) {
+  return readStore<WorkItem>(workItemsKey).filter(
+    (item) =>
+      item.projectId === projectId &&
+      item.category === sectionId &&
+      item.status !== 'archived',
+  ).length
+}
+
+export async function archiveWorkItemsBySection(
+  projectId: string,
+  sectionId: string,
+) {
+  const now = Date.now()
+  writeStore(
+    workItemsKey,
+    readStore<WorkItem>(workItemsKey).map((item) =>
+      item.projectId === projectId &&
+      item.category === sectionId &&
+      item.status !== 'archived'
+        ? { ...item, status: 'archived', updatedAt: now }
+        : item,
+    ),
+  )
+}
+
 export async function reopenWorkItem(id: string) {
   const item = readStore<WorkItem>(workItemsKey).find(
     (storedItem) => storedItem.id === id,
@@ -181,18 +244,52 @@ export async function listDailyCloses(projectId: string) {
     .sort((first, second) => second.createdAt - first.createdAt)
 }
 
-function backfillLocalProjectIds(projectId: string) {
-  const workItems = readStore<LegacyWorkItem>(workItemsKey)
-  if (workItems.some((item) => !item.projectId)) {
-    writeStore<WorkItem>(
-      workItemsKey,
-      workItems.map((item) => ({
-        ...item,
-        projectId: item.projectId ?? projectId,
-      })),
-    )
+function migrateLocalStorage(defaultProjectId: string) {
+  const projects = readStore<LegacyProject>(projectsKey)
+  const migratedProjects = projects.map((project) => ({
+    ...project,
+    boardSections: normalizeBoardSections(project.boardSections),
+  }))
+  if (JSON.stringify(projects) !== JSON.stringify(migratedProjects)) {
+    writeStore<Project>(projectsKey, migratedProjects)
   }
 
+  backfillLocalWorkItems(defaultProjectId, migratedProjects)
+  backfillLocalDailyCloses(defaultProjectId)
+}
+
+function backfillLocalWorkItems(defaultProjectId: string, projects: Project[]) {
+  const workItems = readStore<LegacyWorkItem>(workItemsKey)
+  const sectionsByProject = new Map(
+    projects.map((project) => [
+      project.id,
+      new Set(project.boardSections.map((section) => section.id)),
+    ]),
+  )
+  const firstSectionByProject = new Map(
+    projects.map((project) => [project.id, project.boardSections[0]?.id]),
+  )
+  const migratedWorkItems = workItems.map((item) => {
+    const projectId = item.projectId ?? defaultProjectId
+    const sectionIds = sectionsByProject.get(projectId)
+    const fallbackCategory =
+      firstSectionByProject.get(projectId) ?? cloneDefaultBoardSections()[0].id
+    const category =
+      item.category && sectionIds?.has(item.category) ? item.category : fallbackCategory
+
+    return {
+      ...item,
+      category,
+      projectId,
+    }
+  })
+
+  if (JSON.stringify(workItems) !== JSON.stringify(migratedWorkItems)) {
+    writeStore<WorkItem>(workItemsKey, migratedWorkItems)
+  }
+}
+
+function backfillLocalDailyCloses(projectId: string) {
   const dailyCloses = readStore<LegacyDailyClose>(dailyClosesKey)
   if (dailyCloses.some((close) => !close.projectId)) {
     writeStore<DailyClose>(

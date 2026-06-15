@@ -28,6 +28,7 @@ import {
   textareaClass,
   toneStyles,
 } from '@/lib/appStyles'
+import { sectionColorStyle } from '@/lib/boardSections'
 import { getLocalDateKey } from '@/lib/date'
 import { cn } from '@/lib/utils'
 import {
@@ -47,18 +48,16 @@ import {
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import type { FormEvent, KeyboardEvent, MouseEvent } from 'react'
+import type { CSSProperties, FormEvent, KeyboardEvent, MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type {
+  BoardSection,
   NewWorkItem,
   Project,
-  WorkCategory,
   WorkItem,
   WorkLink,
 } from '../../lib/types'
 import {
-  categories,
-  categoryMeta,
   getSignalOption,
   groupByCategory,
   impactLabels,
@@ -105,7 +104,7 @@ export function TodayPage({ project }: { project: Project }) {
 
   const openItems = items.filter((item) => item.status === 'open')
   const doneItems = items.filter((item) => item.status === 'done')
-  const groupedItems = groupByCategory(openItems)
+  const groupedItems = groupByCategory(openItems, project.boardSections)
 
   async function saveItem(item: NewWorkItem | WorkItem) {
     if ('id' in item) {
@@ -141,13 +140,13 @@ export function TodayPage({ project }: { project: Project }) {
     <main className={mainClass}>
       <AppHeader subtitle={subtitles[new Date().getDay() % subtitles.length]} />
 
-      <Card className="relative grid items-end gap-7 overflow-hidden rounded-lg border-[rgba(226,221,212,0.8)] bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(240,237,231,0.74)),var(--surface)] p-[clamp(24px,5vw,48px)] shadow-[var(--shadow-soft)] md:grid-cols-[minmax(0,1fr)_auto]">
+      <Card className="relative grid items-center gap-6 overflow-hidden rounded-lg border-[rgba(226,221,212,0.8)] bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(240,237,231,0.74)),var(--surface)] p-[clamp(22px,4.2vw,42px)] shadow-[var(--shadow-soft)] md:grid-cols-[minmax(0,1fr)_auto]">
         <div>
           <p className={eyebrowClass}>Today</p>
-          <h1 className="max-w-[15ch] text-[clamp(1.95rem,3vw,3.25rem)] leading-[1.02]">
+          <h1 className="max-w-[15ch] text-[clamp(1.75rem,2.55vw,2.8rem)] leading-[1.06]">
             Clear the day before it carries you.
           </h1>
-          <p className="mt-[18px] max-w-[58ch] text-[1.05rem] text-[var(--text-secondary)]">
+          <p className="mt-3 max-w-[58ch] text-[1rem] leading-[1.45] text-[var(--text-secondary)]">
             Capture work once, decide what it is, and make a calmer call about
             what actually belongs in today.
           </p>
@@ -181,12 +180,12 @@ export function TodayPage({ project }: { project: Project }) {
       {isLoading ? (
         <p className={softNoteClass}>Loading today’s work...</p>
       ) : (
-        <section className="grid items-start gap-3.5 md:grid-cols-2">
-          {categories.map((category) => (
+        <section className="grid items-start gap-4 md:grid-cols-2">
+          {project.boardSections.map((section) => (
             <CategoryColumn
-              key={category}
-              category={category}
-              items={groupedItems[category]}
+              key={section.id}
+              section={section}
+              items={groupedItems[section.id] ?? []}
               onEdit={setEditingItem}
               onToggleDone={toggleDone}
             />
@@ -245,6 +244,7 @@ export function TodayPage({ project }: { project: Project }) {
           onDelete={deleteItem}
           onSave={saveItem}
           projectId={project.id}
+          sections={project.boardSections}
           today={today}
           workItems={items}
         />
@@ -254,36 +254,33 @@ export function TodayPage({ project }: { project: Project }) {
 }
 
 function CategoryColumn({
-  category,
   items,
   onEdit,
   onToggleDone,
+  section,
 }: {
-  category: WorkCategory
   items: WorkItem[]
   onEdit: (item: WorkItem) => void
   onToggleDone: (item: WorkItem) => Promise<void>
+  section: BoardSection
 }) {
-  const meta = categoryMeta[category]
-  const tone = toneStyles[meta.tone]
-
   return (
-    <Card className={cn('min-w-0 rounded-lg p-3.5 shadow-none', tone.bg, tone.border)}>
-      <div className="mb-3.5 flex items-start gap-2.5">
+    <Card
+      className="min-w-0 rounded-lg border-[var(--section-border)] bg-[var(--section-bg)] p-4 shadow-none"
+      style={sectionColorStyle(section) as CSSProperties}
+    >
+      <div className="mb-4 flex items-start gap-3">
         <span
-          className={cn(
-            'mt-1 size-[11px] shrink-0 rounded-full shadow-[inset_0_0_0_999px_currentColor]',
-            tone.text,
-          )}
+          className="mt-[0.32rem] size-[10px] shrink-0 rounded-full text-[var(--section-color)] shadow-[inset_0_0_0_999px_currentColor]"
         />
         <div>
-          <h2>{meta.plural}</h2>
-          <p className="mt-1 text-[0.84rem] leading-[1.35] text-[var(--text-secondary)]">
-            {meta.description}
+          <h2>{section.name}</h2>
+          <p className="mt-1.5 text-[0.84rem] leading-[1.4] text-[var(--text-secondary)]">
+            {section.description}
           </p>
         </div>
       </div>
-      <div className="grid gap-3">
+      <div className="grid gap-3.5">
         {items.length === 0 ? (
           <Card className={cn(panelClass, 'p-[18px] text-sm text-[var(--text-secondary)]')}>
             <p>Nothing here right now.</p>
@@ -474,6 +471,7 @@ function ItemComposer({
   onDelete,
   onSave,
   projectId,
+  sections,
   today,
   workItems,
 }: {
@@ -483,23 +481,32 @@ function ItemComposer({
   onDelete: (item: WorkItem) => Promise<void>
   onSave: (item: NewWorkItem | WorkItem) => Promise<void>
   projectId: string
+  sections: BoardSection[]
   today: string
   workItems: WorkItem[]
 }) {
+  const firstSectionId = sections[0]?.id ?? 'real_commitment'
   const [draft, setDraft] = useState<NewWorkItem | WorkItem>(
-    item ?? {
-      title: '',
-      category: 'real_commitment',
-      urgency: 'today',
-      impact: 'medium',
-      requestedBy: '',
-      displaces: '',
-      links: [],
-      notes: '',
-      projectId,
-      status: 'open',
-      date: today,
-    },
+    item
+      ? {
+          ...item,
+          category: sections.some((section) => section.id === item.category)
+            ? item.category
+            : firstSectionId,
+        }
+      : {
+          title: '',
+          category: firstSectionId,
+          urgency: 'today',
+          impact: 'medium',
+          requestedBy: '',
+          displaces: '',
+          links: [],
+          notes: '',
+          projectId,
+          status: 'open',
+          date: today,
+        },
   )
 
   const isEditing = 'id' in draft
@@ -597,32 +604,30 @@ function ItemComposer({
                 </legend>
                 <RadioGroup
                   className="grid gap-3 sm:grid-cols-2"
-                  onValueChange={(value) =>
-                    updateDraft('category', value as WorkCategory)
-                  }
+                  onValueChange={(value) => updateDraft('category', value)}
                   value={draft.category}
                 >
-                  {categories.map((category) => {
-                    const meta = categoryMeta[category]
-                    const tone = toneStyles[meta.tone]
-                    const isSelected = draft.category === category
-                    const id = `category-${category}`
+                  {sections.map((section) => {
+                    const isSelected = draft.category === section.id
+                    const id = `category-${section.id}`
 
                     return (
-                      <div className="group relative" key={category}>
+                      <div
+                        className="group relative"
+                        key={section.id}
+                        style={sectionColorStyle(section) as CSSProperties}
+                      >
                         <RadioGroupItem
-                          aria-label={meta.label}
+                          aria-label={section.name}
                           className="absolute inset-0 z-10 !size-full !aspect-auto cursor-pointer rounded-lg border-0 opacity-0 after:hidden focus-visible:ring-0"
                           id={id}
-                          value={category}
+                          value={section.id}
                         />
                         <div
                           className={cn(
                             'pointer-events-none relative grid min-h-full items-start gap-2.5 rounded-lg border p-3 text-left transition group-hover:-translate-y-px peer-focus-visible:outline peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[rgba(63,77,60,0.25)]',
                             '[grid-template-columns:auto_minmax(0,1fr)]',
-                            tone.bg,
-                            tone.border,
-                            tone.text,
+                            'border-[var(--section-border)] bg-[var(--section-bg)] text-[var(--section-color)]',
                             isSelected &&
                               'shadow-[inset_0_0_0_1px_currentColor,0_10px_24px_rgba(63,52,34,0.08)]',
                           )}
@@ -630,10 +635,10 @@ function ItemComposer({
                           <span className="mt-1 size-[13px] rounded-full bg-current shadow-[0_0_0_4px_rgba(255,255,255,0.72)]" />
                           <span>
                             <strong className="block leading-tight text-[var(--text-primary)]">
-                              {meta.label}
+                              {section.name}
                             </strong>
                             <small className="mt-1 block text-[0.78rem] font-medium leading-[1.3] text-[var(--text-secondary)]">
-                              {meta.description}
+                              {section.description || 'No description yet.'}
                             </small>
                           </span>
                         </div>

@@ -2,14 +2,16 @@ import { AppHeader } from '@/components/app/AppHeader'
 import { DailyClosePage } from '@/features/daily-close/DailyClosePage'
 import { HistoryPage } from '@/features/daily-close/HistoryPage'
 import { ProjectDialog } from '@/features/projects/ProjectDialog'
+import { ProjectSettingsPage } from '@/features/projects/ProjectSettingsPage'
 import { ProjectSidebar } from '@/features/projects/ProjectSidebar'
 import { useProjects } from '@/features/projects/useProjects'
 import { TodayPage } from '@/features/work-items/TodayPage'
 import { mainClass, pageShellClass, softNoteClass } from '@/lib/appStyles'
 import { cn } from '@/lib/utils'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useNavigate } from 'react-router-dom'
 
 function App() {
+  const navigate = useNavigate()
   const {
     activeProject,
     closeProjectDialog,
@@ -18,12 +20,17 @@ function App() {
     isProjectLoading,
     isSidebarOpen,
     openProjectCreator,
-    openProjectEditor,
     projects,
+    saveProject,
     saveProjectName,
     selectProject,
     setSidebarOpen,
   } = useProjects()
+
+  function openProjectSettings(project: NonNullable<typeof activeProject>) {
+    selectProject(project)
+    navigate('/settings')
+  }
 
   return (
     <div
@@ -39,7 +46,7 @@ function App() {
         isExpanded={isSidebarOpen}
         isLoading={isProjectLoading}
         onCreateProject={openProjectCreator}
-        onEditProject={openProjectEditor}
+        onEditProject={openProjectSettings}
         onSelectProject={selectProject}
         onToggle={() => setSidebarOpen((isOpen) => !isOpen)}
         projects={projects}
@@ -61,6 +68,16 @@ function App() {
             <Route
               path="/history"
               element={<HistoryPage key={activeProject.id} project={activeProject} />}
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProjectSettingsPage
+                  key={activeProject.id}
+                  project={activeProject}
+                  onSaveProject={saveProject}
+                />
+              }
             />
           </Routes>
         ) : (

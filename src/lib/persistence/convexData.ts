@@ -10,6 +10,15 @@ const convexRefs = {
   archiveWorkItem: makeFunctionReference<'mutation', { id: string }>(
     'workItems:archiveWorkItem',
   ),
+  archiveWorkItemsBySection: makeFunctionReference<
+    'mutation',
+    { projectId: string; sectionId: string }
+  >('workItems:archiveWorkItemsBySection'),
+  countWorkItemsBySection: makeFunctionReference<
+    'query',
+    { projectId: string; sectionId: string },
+    number
+  >('workItems:countWorkItemsBySection'),
   createDailyClose: makeFunctionReference<'mutation', NewDailyClose, DailyClose>(
     'dailyCloses:createDailyClose',
   ),
@@ -82,6 +91,26 @@ export async function updateWorkItem(item: WorkItem) {
 
 export async function archiveWorkItem(id: string) {
   await convexClient!.mutation(convexRefs.archiveWorkItem, { id })
+}
+
+export async function countWorkItemsBySection(
+  projectId: string,
+  sectionId: string,
+) {
+  return convexClient!.query(convexRefs.countWorkItemsBySection, {
+    projectId,
+    sectionId,
+  })
+}
+
+export async function archiveWorkItemsBySection(
+  projectId: string,
+  sectionId: string,
+) {
+  await convexClient!.mutation(convexRefs.archiveWorkItemsBySection, {
+    projectId,
+    sectionId,
+  })
 }
 
 export async function reopenWorkItem(id: string) {

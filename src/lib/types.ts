@@ -1,8 +1,4 @@
-export type WorkCategory =
-  | 'real_commitment'
-  | 'real_fire'
-  | 'borrowed_fire'
-  | 'noise'
+export type WorkCategory = string
 
 export type Urgency = 'today' | 'this_week' | 'unclear' | 'later'
 
@@ -15,9 +11,17 @@ export type WorkLink = {
   url: string
 }
 
+export type BoardSection = {
+  id: string
+  name: string
+  color: string
+  description: string
+}
+
 export type Project = {
   id: string
   name: string
+  boardSections: BoardSection[]
   archivedAt?: number
   createdAt: number
   updatedAt: number

@@ -1,6 +1,12 @@
 import * as convexData from './persistence/convexData'
 import * as localData from './persistence/localData'
-import type { DailyClose, NewDailyClose, NewWorkItem, Project, WorkItem } from './types'
+import type {
+  DailyClose,
+  NewDailyClose,
+  NewWorkItem,
+  Project,
+  WorkItem,
+} from './types'
 
 export const activeProjectIdKey = 'dayclarity.activeProjectId'
 
@@ -38,6 +44,14 @@ export function updateWorkItem(item: WorkItem) {
 
 export function archiveWorkItem(id: string) {
   return dataSource.archiveWorkItem(id)
+}
+
+export function countWorkItemsBySection(projectId: string, sectionId: string) {
+  return dataSource.countWorkItemsBySection(projectId, sectionId)
+}
+
+export function archiveWorkItemsBySection(projectId: string, sectionId: string) {
+  return dataSource.archiveWorkItemsBySection(projectId, sectionId)
 }
 
 export function createDailyClose(close: NewDailyClose) {

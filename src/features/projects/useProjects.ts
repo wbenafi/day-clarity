@@ -82,6 +82,12 @@ export function useProjects() {
     await refreshProjects(project.id)
   }
 
+  async function saveProject(project: Project) {
+    const updatedProject = await updateProject(project)
+    await refreshProjects(updatedProject.id)
+    return updatedProject
+  }
+
   function openProjectCreator() {
     setEditingProject(null)
     setProjectDialogOpen(true)
@@ -109,6 +115,7 @@ export function useProjects() {
     openProjectCreator,
     openProjectEditor,
     projects,
+    saveProject,
     saveProjectName,
     selectProject,
     setSidebarOpen,
