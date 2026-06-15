@@ -1,5 +1,6 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
+import type { QueryCtx } from './_generated/server'
 import { impact, urgency, workCategory, workStatus } from './schema'
 
 const optionalString = v.optional(v.string())
@@ -16,6 +17,7 @@ const workItemPayload = {
   impact: v.optional(impact),
   links: v.optional(v.array(workLink)),
   notes: optionalString,
+  projectId: v.string(),
   requestedBy: optionalString,
   status: workStatus,
   title: v.string(),
@@ -24,6 +26,7 @@ const workItemPayload = {
 
 const workItemReturn = (item: {
   _id: string
+  projectId?: string
   title: string
   category: 'real_commitment' | 'real_fire' | 'borrowed_fire' | 'noise'
   urgency?: 'today' | 'this_week' | 'unclear' | 'later'
@@ -39,6 +42,7 @@ const workItemReturn = (item: {
   date: string
 }) => ({
   id: item._id,
+  projectId: item.projectId ?? '',
   title: item.title,
   category: item.category,
   urgency: item.urgency,
@@ -133,31 +137,35 @@ export const reopenWorkItem = mutation({
 })
 
 export const listWorkItemsByDate = query({
-  args: { date: v.string() },
+  args: { date: v.string(), projectId: v.string() },
   handler: async (ctx, args) => {
-    const items = await ctx.db
-      .query('workItems')
-      .withIndex('by_date', (q) => q.eq('date', args.date))
-      .collect()
-
-    return items
-      .filter((item) => item.status !== 'archived')
-      .sort((first, second) => first.createdAt - second.createdAt)
-      .map(workItemReturn)
+    return listVisibleProjectWorkItems(ctx, args.projectId, args.date)
   },
 })
 
 export const listTodayWorkItems = query({
-  args: { date: v.string() },
+  args: { date: v.string(), projectId: v.string() },
   handler: async (ctx, args) => {
-    const items = await ctx.db
-      .query('workItems')
-      .withIndex('by_date', (q) => q.eq('date', args.date))
-      .collect()
-
-    return items
-      .filter((item) => item.status !== 'archived')
-      .sort((first, second) => first.createdAt - second.createdAt)
-      .map(workItemReturn)
+    return listVisibleProjectWorkItems(ctx, args.projectId, args.date)
   },
 })
+
+async function listVisibleProjectWorkItems(
+  ctx: QueryCtx,
+  projectId: string,
+  date: string,
+) {
+  const items = await ctx.db
+    .query('workItems')
+    .withIndex('by_project_date', (q) => q.eq('projectId', projectId))
+    .collect()
+
+  return items
+    .filter(
+      (item) =>
+        item.status !== 'archived' &&
+        (item.date === date || (item.status === 'open' && item.date < date)),
+    )
+    .sort((first, second) => first.createdAt - second.createdAt)
+    .map(workItemReturn)
+}

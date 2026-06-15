@@ -7,6 +7,8 @@ The MVP includes:
 
 - Today dashboard grouped into My Real Commitments, Real Fires, Borrowed Fires,
   and Noise / Needs Clarity.
+- Device-scoped projects so separate boards can keep their own work items,
+  daily closes, and history.
 - Add/edit/archive/move/done flows for work items.
 - Daily Close flow with finished work, still-open work, needs-prioritization
   suggestions, one first step for tomorrow, and copyable Markdown.

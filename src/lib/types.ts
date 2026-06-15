@@ -15,8 +15,19 @@ export type WorkLink = {
   url: string
 }
 
+export type Project = {
+  id: string
+  name: string
+  archivedAt?: number
+  createdAt: number
+  updatedAt: number
+}
+
+export type NewProject = Omit<Project, 'createdAt' | 'id' | 'updatedAt'>
+
 export type WorkItem = {
   id: string
+  projectId: string
   title: string
   category: WorkCategory
   urgency?: Urgency
@@ -36,6 +47,7 @@ export type NewWorkItem = Omit<WorkItem, 'createdAt' | 'id' | 'updatedAt'>
 
 export type DailyClose = {
   id: string
+  projectId: string
   date: string
   finished: string[]
   stillOpen: string[]

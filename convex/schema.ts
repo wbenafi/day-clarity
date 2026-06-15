@@ -28,7 +28,15 @@ export const workStatus = v.union(
 )
 
 export default defineSchema({
+  projects: defineTable({
+    name: v.string(),
+    archivedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index('by_name', ['name']),
   dailyCloses: defineTable({
+    // Optional only while legacy documents are backfilled by projects:ensureDefaultProject.
+    projectId: v.optional(v.string()),
     date: v.string(),
     finished: v.array(v.string()),
     stillOpen: v.array(v.string()),
@@ -37,8 +45,12 @@ export default defineSchema({
     markdownSummary: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index('by_date', ['date']),
+  })
+    .index('by_date', ['date'])
+    .index('by_project_date', ['projectId', 'date']),
   workItems: defineTable({
+    // Optional only while legacy documents are backfilled by projects:ensureDefaultProject.
+    projectId: v.optional(v.string()),
     title: v.string(),
     category: workCategory,
     urgency: v.optional(urgency),
@@ -63,5 +75,7 @@ export default defineSchema({
     .index('by_category', ['category'])
     .index('by_date', ['date'])
     .index('by_date_status', ['date', 'status'])
+    .index('by_project_date', ['projectId', 'date'])
+    .index('by_project_date_status', ['projectId', 'date', 'status'])
     .index('by_status', ['status']),
 })
