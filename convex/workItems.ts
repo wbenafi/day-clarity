@@ -28,7 +28,7 @@ const workItemReturn = (item: {
   _id: string
   projectId?: string
   title: string
-  category: 'real_commitment' | 'real_fire' | 'borrowed_fire' | 'noise'
+  category: string
   urgency?: 'today' | 'this_week' | 'unclear' | 'later'
   impact?: 'low' | 'medium' | 'high'
   requestedBy?: string
@@ -99,6 +99,45 @@ export const archiveWorkItem = mutation({
     if (!itemId) throw new Error('Unknown work item.')
 
     await ctx.db.patch(itemId, { status: 'archived', updatedAt: Date.now() })
+  },
+})
+
+export const countWorkItemsBySection = query({
+  args: { projectId: v.string(), sectionId: v.string() },
+  handler: async (ctx, args) => {
+    const items = await ctx.db
+      .query('workItems')
+      .withIndex('by_project_date', (q) => q.eq('projectId', args.projectId))
+      .collect()
+
+    return items.filter(
+      (item) => item.category === args.sectionId && item.status !== 'archived',
+    ).length
+  },
+})
+
+export const archiveWorkItemsBySection = mutation({
+  args: { projectId: v.string(), sectionId: v.string() },
+  handler: async (ctx, args) => {
+    const now = Date.now()
+    const items = await ctx.db
+      .query('workItems')
+      .withIndex('by_project_date', (q) => q.eq('projectId', args.projectId))
+      .collect()
+
+    await Promise.all(
+      items
+        .filter(
+          (item) =>
+            item.category === args.sectionId && item.status !== 'archived',
+        )
+        .map((item) =>
+          ctx.db.patch(item._id, {
+            status: 'archived',
+            updatedAt: now,
+          }),
+        ),
+    )
   },
 })
 

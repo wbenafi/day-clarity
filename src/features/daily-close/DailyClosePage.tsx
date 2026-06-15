@@ -1,4 +1,5 @@
 import { AppHeader } from '@/components/app/AppHeader'
+import { ScreenHeader } from '@/components/app/ScreenHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -21,10 +22,9 @@ import { copyText } from '@/lib/clipboard'
 import { createDailyClose, listWorkItemsByDate } from '@/lib/data'
 import { formatLongDate, getLocalDateKey } from '@/lib/date'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, ClipboardCopy, ListChecks } from 'lucide-react'
+import { ClipboardCopy, ListChecks } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
 import type { Project, WorkItem } from '../../lib/types'
 import {
   buildMarkdownSummary,
@@ -34,7 +34,6 @@ import {
 import { needsPrioritization } from '../work-items/workItemRules'
 
 export function DailyClosePage({ project }: { project: Project }) {
-  const navigate = useNavigate()
   const today = getLocalDateKey()
   const [items, setItems] = useState<WorkItem[]>([])
   const [extraFinished, setExtraFinished] = useState('')
@@ -92,24 +91,14 @@ export function DailyClosePage({ project }: { project: Project }) {
   return (
     <main className={mainClass}>
       <AppHeader subtitle="You can leave work unfinished without carrying it all night." />
-      <div className="grid justify-items-start gap-3.5">
-        <Button
-          className={secondaryButtonClass}
-          onClick={() => navigate('/')}
-          type="button"
-          variant="outline"
-        >
-          <ArrowLeft size={17} />
-          Back to today
-        </Button>
-        <h1 className="max-w-[14ch]">Close the day with clarity.</h1>
-        <p className="max-w-[64ch] text-[var(--text-secondary)]">
-          This is a short reset: name what moved, release what remains, and pick
-          one first step for tomorrow.
-        </p>
-      </div>
+      <ScreenHeader
+        backLabel="Back to today"
+        backTo="/"
+        title="Close the day with clarity."
+        description="This is a short reset: name what moved, release what remains, and pick one first step for tomorrow."
+      />
 
-      <section className="grid gap-3.5 sm:grid-cols-2">
+      <section className="grid gap-4 sm:grid-cols-2">
         <CloseSection
           kicker="1"
           prompt="What did you finish, move forward, unblock, or clarify today?"
@@ -214,12 +203,12 @@ function CloseSection({
 }) {
   return (
     <Card className={cn(panelClass, 'p-5')}>
-      <span className="mb-3 inline-flex size-[30px] items-center justify-center rounded-full bg-[var(--commitment-bg)] font-extrabold text-[var(--commitment)]">
+      <span className="mb-3.5 inline-flex size-7 items-center justify-center rounded-full bg-[var(--commitment-bg)] text-sm font-extrabold text-[var(--commitment)]">
         {kicker}
       </span>
       <h2>{title}</h2>
-      <p className="mt-2 text-[var(--text-secondary)]">{prompt}</p>
-      <CardContent className="mt-4 grid gap-3 p-0">{children}</CardContent>
+      <p className="mt-1.5 leading-[1.45] text-[var(--text-secondary)]">{prompt}</p>
+      <CardContent className="mt-4 grid gap-3.5 p-0">{children}</CardContent>
     </Card>
   )
 }

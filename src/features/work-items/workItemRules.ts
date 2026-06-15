@@ -1,4 +1,4 @@
-import type { CategoryTone, SignalTone } from '@/lib/appStyles'
+import type { SignalTone } from '@/lib/appStyles'
 import {
   ArrowRight,
   CalendarDays,
@@ -9,7 +9,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import type { Impact, Urgency, WorkCategory, WorkItem, WorkLink } from '../../lib/types'
+import type { BoardSection, Impact, Urgency, WorkItem, WorkLink } from '../../lib/types'
 
 export type SignalOption<Value extends string> = {
   Icon: LucideIcon
@@ -18,43 +18,6 @@ export type SignalOption<Value extends string> = {
   tone: SignalTone
   value: Value
 }
-
-export const categoryMeta: Record<
-  WorkCategory,
-  {
-    label: string
-    plural: string
-    description: string
-    tone: CategoryTone
-  }
-> = {
-  real_commitment: {
-    label: 'My Real Commitment',
-    plural: 'My Real Commitments',
-    description: 'Work you accepted, own, and should actually move forward.',
-    tone: 'commitment',
-  },
-  real_fire: {
-    label: 'Real Fire',
-    plural: 'Real Fires',
-    description: 'Urgent work with real impact if ignored.',
-    tone: 'realFire',
-  },
-  borrowed_fire: {
-    label: 'Borrowed Fire',
-    plural: 'Borrowed Fires',
-    description: 'Someone else’s urgency that may not belong to you.',
-    tone: 'borrowedFire',
-  },
-  noise: {
-    label: 'Noise / Needs Clarity',
-    plural: 'Noise / Needs Clarity',
-    description: 'Vague, duplicated, unclear, or unprioritized work.',
-    tone: 'noise',
-  },
-}
-
-export const categories = Object.keys(categoryMeta) as WorkCategory[]
 
 export const urgencyLabels: Record<Urgency, string> = {
   today: 'Today',
@@ -137,13 +100,15 @@ const impactSortRank: Record<Impact, number> = {
   low: 2,
 }
 
-export function groupByCategory(items: WorkItem[]) {
-  return categories.reduce(
+export function groupByCategory(items: WorkItem[], sections: BoardSection[]) {
+  return sections.reduce(
     (grouped, category) => ({
       ...grouped,
-      [category]: sortWorkItems(items.filter((item) => item.category === category)),
+      [category.id]: sortWorkItems(
+        items.filter((item) => item.category === category.id),
+      ),
     }),
-    {} as Record<WorkCategory, WorkItem[]>,
+    {} as Record<string, WorkItem[]>,
   )
 }
 

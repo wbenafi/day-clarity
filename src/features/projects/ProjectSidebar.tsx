@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button'
 import { softNoteClass } from '@/lib/appStyles'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/lib/types'
-import { ArrowLeft, ArrowRight, Pencil, Plus } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, Pencil, Plus } from 'lucide-react'
 
 export function ProjectSidebar({
   activeProject,
@@ -33,13 +33,13 @@ export function ProjectSidebar({
     >
       <Button
         aria-label={isExpanded ? 'Collapse projects' : 'Expand projects'}
-        className="size-[42px] rounded-lg border border-[var(--border)] bg-white/80 text-[var(--text-secondary)] hover:bg-white"
+        className="size-[42px] cursor-pointer rounded-lg border-0 text-[var(--app-accent)] hover:bg-[rgba(81,96,76,0.13)] hover:text-[var(--app-accent)]"
         onClick={onToggle}
         size="icon"
         type="button"
-        variant="outline"
+        variant="ghost"
       >
-        {isExpanded ? <ArrowLeft size={18} /> : <ArrowRight size={18} />}
+        {isExpanded ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
       </Button>
 
       <div
@@ -57,7 +57,7 @@ export function ProjectSidebar({
             return (
               <div
                 className={cn(
-                  'grid items-center gap-1.5 rounded-lg border border-transparent p-1.5',
+                  'grid items-center gap-1.5 rounded-lg border border-transparent p-1.5 transition-colors hover:border-[rgba(81,96,76,0.2)] hover:bg-[rgba(81,96,76,0.07)]',
                   isExpanded
                     ? 'grid-cols-[minmax(0,1fr)_auto]'
                     : 'grid-cols-1 justify-items-center p-1',
@@ -69,7 +69,7 @@ export function ProjectSidebar({
                 <Button
                   aria-label={isExpanded ? undefined : `Switch to ${project.name}`}
                   className={cn(
-                    'h-auto justify-start gap-2.5 rounded-lg bg-transparent p-0 text-left font-[760] text-[var(--text-primary)] hover:bg-transparent',
+                    'h-auto cursor-pointer justify-start gap-2.5 rounded-lg bg-transparent p-0 text-left font-[760] text-[var(--text-primary)] hover:bg-transparent',
                     !isExpanded && 'size-[42px] justify-center',
                   )}
                   onClick={() => onSelectProject(project)}
@@ -92,8 +92,8 @@ export function ProjectSidebar({
 
                 {isExpanded && (
                   <Button
-                    aria-label={`Rename ${project.name}`}
-                    className="size-[34px] rounded-lg text-[var(--text-secondary)] hover:bg-[rgba(81,96,76,0.08)] hover:text-[var(--app-accent)]"
+                    aria-label={`Edit ${project.name} settings`}
+                    className="size-[34px] cursor-pointer rounded-lg text-[var(--text-secondary)] hover:bg-[rgba(81,96,76,0.08)] hover:text-[var(--app-accent)]"
                     onClick={() => onEditProject(project)}
                     size="icon-sm"
                     type="button"
@@ -111,13 +111,13 @@ export function ProjectSidebar({
       <Button
         aria-label={isExpanded ? undefined : 'New project'}
         className={cn(
-          'h-auto min-h-[42px] rounded-lg border border-[rgba(81,96,76,0.18)] bg-[rgba(81,96,76,0.08)] px-3 py-2.5 font-[780] text-[var(--app-accent)] hover:bg-[rgba(81,96,76,0.13)]',
+          'h-auto min-h-[42px] cursor-pointer rounded-lg border-0 bg-[rgba(81,96,76,0.08)] px-3 py-2.5 font-[780] text-[var(--app-accent)] hover:bg-[rgba(81,96,76,0.13)] hover:text-[var(--app-accent)]',
           !isExpanded && 'size-[42px] p-0',
         )}
         onClick={onCreateProject}
         title={isExpanded ? undefined : 'New project'}
         type="button"
-        variant="outline"
+        variant="ghost"
       >
         <Plus size={16} />
         {isExpanded && <span>New project</span>}

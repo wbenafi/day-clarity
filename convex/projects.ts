@@ -1,18 +1,52 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
+import { boardSection } from './schema'
 
 const defaultProjectName = 'Initial Project'
 const legacyDefaultProjectName = 'Default'
+const defaultBoardSections = [
+  {
+    id: 'real_commitment',
+    name: 'My Real Commitments',
+    color: '#51604C',
+    description: 'Work you accepted, own, and should actually move forward.',
+  },
+  {
+    id: 'real_fire',
+    name: 'Real Fires',
+    color: '#B85C38',
+    description: 'Urgent work with real impact if ignored.',
+  },
+  {
+    id: 'borrowed_fire',
+    name: 'Borrowed Fires',
+    color: '#B58B2A',
+    description: 'Someone else’s urgency that may not belong to you.',
+  },
+  {
+    id: 'noise',
+    name: 'Noise / Needs Clarity',
+    color: '#78716C',
+    description: 'Vague, duplicated, unclear, or unprioritized work.',
+  },
+]
 
 const projectReturn = (project: {
   _id: string
   name: string
+  boardSections?: Array<{
+    id: string
+    name: string
+    color: string
+    description: string
+  }>
   archivedAt?: number
   createdAt: number
   updatedAt: number
 }) => ({
   id: project._id,
   name: project.name,
+  boardSections: project.boardSections ?? defaultBoardSections,
   archivedAt: project.archivedAt,
   createdAt: project.createdAt,
   updatedAt: project.updatedAt,
@@ -39,6 +73,7 @@ export const ensureDefaultProject = mutation({
     } else if (!defaultProject) {
       const id = await ctx.db.insert('projects', {
         name: defaultProjectName,
+        boardSections: defaultBoardSections,
         createdAt: now,
         updatedAt: now,
       })
@@ -95,6 +130,7 @@ export const createProject = mutation({
     const now = Date.now()
     const id = await ctx.db.insert('projects', {
       name,
+      boardSections: defaultBoardSections,
       createdAt: now,
       updatedAt: now,
     })
@@ -108,6 +144,7 @@ export const updateProject = mutation({
   args: {
     id: v.string(),
     name: v.string(),
+    boardSections: v.optional(v.array(boardSection)),
     archivedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -121,6 +158,7 @@ export const updateProject = mutation({
 
     await ctx.db.patch(projectId, {
       name,
+      boardSections: args.boardSections,
       archivedAt: args.archivedAt,
       updatedAt: Date.now(),
     })

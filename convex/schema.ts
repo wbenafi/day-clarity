@@ -1,12 +1,14 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
-export const workCategory = v.union(
-  v.literal('real_commitment'),
-  v.literal('real_fire'),
-  v.literal('borrowed_fire'),
-  v.literal('noise'),
-)
+export const boardSection = v.object({
+  id: v.string(),
+  name: v.string(),
+  color: v.string(),
+  description: v.string(),
+})
+
+export const workCategory = v.string()
 
 export const urgency = v.union(
   v.literal('today'),
@@ -30,6 +32,7 @@ export const workStatus = v.union(
 export default defineSchema({
   projects: defineTable({
     name: v.string(),
+    boardSections: v.optional(v.array(boardSection)),
     archivedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
