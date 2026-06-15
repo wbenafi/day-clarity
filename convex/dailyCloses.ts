@@ -7,11 +7,13 @@ const dailyClosePayload = {
   firstStepTomorrow: v.optional(v.string()),
   markdownSummary: v.string(),
   needsPrioritization: v.array(v.string()),
+  projectId: v.string(),
   stillOpen: v.array(v.string()),
 }
 
 const dailyCloseReturn = (close: {
   _id: string
+  projectId?: string
   date: string
   finished: string[]
   stillOpen: string[]
@@ -22,6 +24,7 @@ const dailyCloseReturn = (close: {
   updatedAt: number
 }) => ({
   id: close._id,
+  projectId: close.projectId ?? '',
   date: close.date,
   finished: close.finished,
   stillOpen: close.stillOpen,
@@ -38,8 +41,10 @@ export const createDailyClose = mutation({
     const now = Date.now()
     const existing = await ctx.db
       .query('dailyCloses')
-      .withIndex('by_date', (q) => q.eq('date', args.date))
-      .unique()
+      .withIndex('by_project_date', (q) =>
+        q.eq('projectId', args.projectId).eq('date', args.date),
+      )
+      .first()
 
     if (existing) {
       await ctx.db.patch(existing._id, { ...args, updatedAt: now })
@@ -77,21 +82,26 @@ export const updateDailyClose = mutation({
 })
 
 export const getDailyCloseByDate = query({
-  args: { date: v.string() },
+  args: { date: v.string(), projectId: v.string() },
   handler: async (ctx, args) => {
     const close = await ctx.db
       .query('dailyCloses')
-      .withIndex('by_date', (q) => q.eq('date', args.date))
-      .unique()
+      .withIndex('by_project_date', (q) =>
+        q.eq('projectId', args.projectId).eq('date', args.date),
+      )
+      .first()
 
     return close ? dailyCloseReturn(close) : null
   },
 })
 
 export const listDailyCloses = query({
-  args: {},
-  handler: async (ctx) => {
-    const closes = await ctx.db.query('dailyCloses').collect()
+  args: { projectId: v.string() },
+  handler: async (ctx, args) => {
+    const closes = await ctx.db
+      .query('dailyCloses')
+      .withIndex('by_project_date', (q) => q.eq('projectId', args.projectId))
+      .collect()
     return closes
       .sort((first, second) => second.createdAt - first.createdAt)
       .map(dailyCloseReturn)
