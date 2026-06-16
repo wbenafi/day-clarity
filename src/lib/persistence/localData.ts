@@ -30,14 +30,17 @@ type LegacyDailyClose = Omit<DailyClose, 'projectId'> & { projectId?: string }
 export async function ensureDefaultProject() {
   const now = Date.now()
   const projects = readStore<LegacyProject>(projectsKey)
-  let defaultProject = projects.find(
+  const activeProjects = projects
+    .filter((project) => !project.archivedAt)
+    .sort((first, second) => first.createdAt - second.createdAt)
+  let defaultProject = activeProjects.find(
     (project) => project.name === defaultProjectName && !project.archivedAt,
   )
-  const legacyDefaultProject = projects.find(
+  const legacyDefaultProject = activeProjects.find(
     (project) => project.name === legacyDefaultProjectName && !project.archivedAt,
   )
 
-  if (!defaultProject && legacyDefaultProject) {
+  if (!defaultProject && legacyDefaultProject && activeProjects.length === 1) {
     defaultProject = {
       ...legacyDefaultProject,
       boardSections: normalizeBoardSections(legacyDefaultProject.boardSections),
@@ -50,6 +53,8 @@ export async function ensureDefaultProject() {
         project.id === defaultProject?.id ? defaultProject : project,
       ),
     )
+  } else if (!defaultProject && activeProjects.length > 0) {
+    defaultProject = activeProjects[0]
   } else if (!defaultProject) {
     defaultProject = {
       id: crypto.randomUUID(),

@@ -57,19 +57,24 @@ export const ensureDefaultProject = mutation({
   handler: async (ctx) => {
     const now = Date.now()
     const projects = await ctx.db.query('projects').collect()
-    let defaultProject = projects.find(
+    const activeProjects = projects
+      .filter((project) => !project.archivedAt)
+      .sort((first, second) => first.createdAt - second.createdAt)
+    let defaultProject = activeProjects.find(
       (project) => project.name === defaultProjectName && !project.archivedAt,
     )
-    const legacyDefaultProject = projects.find(
+    const legacyDefaultProject = activeProjects.find(
       (project) => project.name === legacyDefaultProjectName && !project.archivedAt,
     )
 
-    if (!defaultProject && legacyDefaultProject) {
+    if (!defaultProject && legacyDefaultProject && activeProjects.length === 1) {
       await ctx.db.patch(legacyDefaultProject._id, {
         name: defaultProjectName,
         updatedAt: now,
       })
       defaultProject = await ctx.db.get(legacyDefaultProject._id)
+    } else if (!defaultProject && activeProjects.length > 0) {
+      defaultProject = activeProjects[0]
     } else if (!defaultProject) {
       const id = await ctx.db.insert('projects', {
         name: defaultProjectName,

@@ -38,6 +38,16 @@ import {
   updateWorkItem,
 } from '@/lib/data'
 import {
+  DndContext,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import type { DragEndEvent } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
+import {
   ArrowRight,
   Check,
   ChevronDown,
@@ -81,6 +91,13 @@ export function TodayPage({ project }: { project: Project }) {
   const [editingItem, setEditingItem] = useState<WorkItem | null>(null)
   const [completedOpen, setCompletedOpen] = useState(false)
   const [isLoading, setLoading] = useState(true)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  )
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -136,6 +153,30 @@ export function TodayPage({ project }: { project: Project }) {
     await refresh()
   }
 
+  async function moveItemToSection(itemId: string, sectionId: string) {
+    const item = items.find((candidate) => candidate.id === itemId)
+    const sectionExists = project.boardSections.some(
+      (section) => section.id === sectionId,
+    )
+    if (!item || !sectionExists || item.category === sectionId) return
+
+    setItems((currentItems) =>
+      currentItems.map((candidate) =>
+        candidate.id === item.id ? { ...candidate, category: sectionId } : candidate,
+      ),
+    )
+
+    await updateWorkItem({ ...item, category: sectionId })
+    await refresh()
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const targetSectionId = event.over?.id
+    if (typeof targetSectionId !== 'string') return
+
+    void moveItemToSection(String(event.active.id), targetSectionId)
+  }
+
   return (
     <main className={mainClass}>
       <AppHeader subtitle={subtitles[new Date().getDay() % subtitles.length]} />
@@ -180,17 +221,19 @@ export function TodayPage({ project }: { project: Project }) {
       {isLoading ? (
         <p className={softNoteClass}>Loading today’s work...</p>
       ) : (
-        <section className="grid items-start gap-4 md:grid-cols-2">
-          {project.boardSections.map((section) => (
-            <CategoryColumn
-              key={section.id}
-              section={section}
-              items={groupedItems[section.id] ?? []}
-              onEdit={setEditingItem}
-              onToggleDone={toggleDone}
-            />
-          ))}
-        </section>
+        <DndContext onDragEnd={handleDragEnd} sensors={sensors}>
+          <section className="grid items-start gap-4 md:grid-cols-2">
+            {project.boardSections.map((section) => (
+              <CategoryColumn
+                key={section.id}
+                section={section}
+                items={groupedItems[section.id] ?? []}
+                onEdit={setEditingItem}
+                onToggleDone={toggleDone}
+              />
+            ))}
+          </section>
+        </DndContext>
       )}
 
       <Card className="rounded-lg border-[var(--border)] bg-white/60 p-2.5 shadow-none">
@@ -264,9 +307,18 @@ function CategoryColumn({
   onToggleDone: (item: WorkItem) => Promise<void>
   section: BoardSection
 }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: section.id,
+  })
+
   return (
     <Card
-      className="min-w-0 rounded-lg border-[var(--section-border)] bg-[var(--section-bg)] p-4 shadow-none"
+      ref={setNodeRef}
+      className={cn(
+        'min-w-0 overflow-visible rounded-lg border-[var(--section-border)] bg-[var(--section-bg)] p-4 shadow-none transition-[border-color,box-shadow,transform]',
+        isOver &&
+          'translate-y-[-1px] shadow-[0_18px_40px_rgba(63,52,34,0.12)] ring-2 ring-[var(--section-border)] ring-offset-2 ring-offset-[var(--surface)]',
+      )}
       style={sectionColorStyle(section) as CSSProperties}
     >
       <div className="mb-4 flex items-start gap-3">
@@ -288,6 +340,7 @@ function CategoryColumn({
         ) : (
           items.map((item) => (
             <WorkItemCard
+              isDraggable
               key={item.id}
               item={item}
               onEdit={onEdit}
@@ -301,16 +354,27 @@ function CategoryColumn({
 }
 
 function WorkItemCard({
+  isDraggable = false,
   item,
   onEdit,
   onToggleDone,
 }: {
+  isDraggable?: boolean
   item: WorkItem
   onEdit: (item: WorkItem) => void
   onToggleDone: (item: WorkItem) => Promise<void>
 }) {
   const urgencyOption = getSignalOption(urgencyOptions, item.urgency)
   const impactOption = getSignalOption(impactOptions, item.impact)
+  const { attributes, isDragging, listeners, setNodeRef, transform } =
+    useDraggable({
+      data: { type: 'work-item' },
+      disabled: !isDraggable,
+      id: item.id,
+    })
+  const dragStyle = transform
+    ? ({ transform: CSS.Translate.toString(transform) } as CSSProperties)
+    : undefined
 
   function openEdit() {
     onEdit(item)
@@ -324,16 +388,23 @@ function WorkItemCard({
 
   return (
     <Card
+      ref={setNodeRef}
       aria-label={`Edit ${item.title}`}
       className={cn(
         panelClass,
         'cursor-pointer p-3.5 shadow-[var(--shadow-card)] transition hover:-translate-y-px hover:border-[rgba(63,77,60,0.22)] hover:shadow-[0_15px_34px_rgba(63,52,34,0.1)] focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[rgba(63,77,60,0.25)]',
+        isDraggable && 'cursor-grab touch-none active:cursor-grabbing',
+        isDragging &&
+          'relative z-20 opacity-80 shadow-[0_22px_46px_rgba(63,52,34,0.18)]',
         item.status === 'done' && 'opacity-70',
       )}
       onClick={openEdit}
       onKeyDown={handleCardKeyDown}
       role="button"
+      style={dragStyle}
       tabIndex={0}
+      {...(isDraggable ? attributes : {})}
+      {...(isDraggable ? listeners : {})}
     >
       <div className="grid items-start gap-2.5 [grid-template-columns:minmax(0,1fr)_auto]">
         <div>
