@@ -67,15 +67,18 @@ type PendingSectionDelete = {
 }
 
 export function ProjectSettingsPage({
+  onDeleteProject,
   onSaveProject,
   project,
 }: {
+  onDeleteProject: (project: Project) => Promise<void>
   onSaveProject: (project: Project) => Promise<Project>
   project: Project
 }) {
   const [name, setName] = useState(project.name)
   const [sections, setSections] = useState(project.boardSections)
   const [isSaving, setSaving] = useState(false)
+  const [isProjectDeleteOpen, setProjectDeleteOpen] = useState(false)
   const [pendingDelete, setPendingDelete] =
     useState<PendingSectionDelete | null>(null)
   const [status, setStatus] = useState('')
@@ -194,6 +197,19 @@ export function ProjectSettingsPage({
     }
   }
 
+  async function confirmProjectDelete() {
+    if (isSaving) return
+
+    setSaving(true)
+    setStatus('')
+    try {
+      await onDeleteProject(project)
+    } catch (error) {
+      setSaving(false)
+      throw error
+    }
+  }
+
   return (
     <main className={mainClass}>
       <AppHeader subtitle="Tune this project’s board so it matches the work." />
@@ -276,6 +292,27 @@ export function ProjectSettingsPage({
         </div>
       </form>
 
+      <Card className={cn(panelClass, 'grid gap-3.5 p-5')}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2>Delete project</h2>
+            <p className={cn(softNoteClass, 'mt-1')}>
+              Remove this project from the sidebar and switch to another project.
+            </p>
+          </div>
+          <Button
+            className={dangerButtonClass}
+            disabled={isSaving}
+            onClick={() => setProjectDeleteOpen(true)}
+            type="button"
+            variant="destructive"
+          >
+            <Trash2 size={17} />
+            Delete project
+          </Button>
+        </div>
+      </Card>
+
       <BoardSectionDeleteDialog
         affectedItems={pendingDelete?.affectedItems ?? 0}
         isDeleting={isSaving}
@@ -286,7 +323,75 @@ export function ProjectSettingsPage({
         onConfirm={() => void confirmSectionDelete()}
         sectionName={pendingDelete?.section.name ?? ''}
       />
+
+      <ProjectDeleteDialog
+        isDeleting={isSaving}
+        isOpen={isProjectDeleteOpen}
+        onCancel={() => {
+          if (!isSaving) setProjectDeleteOpen(false)
+        }}
+        onConfirm={() => void confirmProjectDelete()}
+        projectName={project.name}
+      />
     </main>
+  )
+}
+
+function ProjectDeleteDialog({
+  isDeleting,
+  isOpen,
+  onCancel,
+  onConfirm,
+  projectName,
+}: {
+  isDeleting: boolean
+  isOpen: boolean
+  onCancel: () => void
+  onConfirm: () => void
+  projectName: string
+}) {
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent className="max-w-[440px] rounded-lg bg-[var(--surface)] p-[26px] shadow-[0_30px_80px_rgba(37,37,37,0.2)] sm:max-w-[440px]">
+        <DialogHeader className="gap-3 pr-8">
+          <div className="flex size-10 items-center justify-center rounded-lg border border-[rgba(184,92,56,0.2)] bg-[rgba(247,232,223,0.78)] text-[var(--real-fire)]">
+            <AlertTriangle size={20} />
+          </div>
+          <DialogTitle>Delete project</DialogTitle>
+          <DialogDescription className="text-sm leading-[1.55] text-[var(--text-secondary)]">
+            Delete "{projectName}"? The project will be removed from the sidebar
+            and you will switch to another active project. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
+          <Button
+            className={secondaryButtonClass}
+            disabled={isDeleting}
+            onClick={onCancel}
+            type="button"
+            variant="outline"
+          >
+            Cancel
+          </Button>
+          <Button
+            className={dangerButtonClass}
+            disabled={isDeleting}
+            onClick={onConfirm}
+            type="button"
+            variant="destructive"
+          >
+            <Trash2 size={17} />
+            {isDeleting ? 'Deleting...' : 'Delete project'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
