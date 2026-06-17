@@ -88,6 +88,15 @@ export function useProjects() {
     return updatedProject
   }
 
+  async function deleteProject(project: Project) {
+    const archivedProject = await updateProject({
+      ...project,
+      archivedAt: Date.now(),
+    })
+    await refreshProjects()
+    return archivedProject
+  }
+
   function openProjectCreator() {
     setEditingProject(null)
     setProjectDialogOpen(true)
@@ -115,6 +124,7 @@ export function useProjects() {
     openProjectCreator,
     openProjectEditor,
     projects,
+    deleteProject,
     saveProject,
     saveProjectName,
     selectProject,

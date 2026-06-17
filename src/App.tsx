@@ -21,6 +21,7 @@ function App() {
     isSidebarOpen,
     openProjectCreator,
     projects,
+    deleteProject,
     saveProject,
     saveProjectName,
     selectProject,
@@ -75,6 +76,10 @@ function App() {
                 <ProjectSettingsPage
                   key={activeProject.id}
                   project={activeProject}
+                  onDeleteProject={async (project) => {
+                    await deleteProject(project)
+                    navigate('/')
+                  }}
                   onSaveProject={saveProject}
                 />
               }

@@ -33,7 +33,7 @@ export function ProjectSidebar({
     >
       <Button
         aria-label={isExpanded ? 'Collapse projects' : 'Expand projects'}
-        className="size-[42px] cursor-pointer rounded-lg border-0 text-[var(--app-accent)] hover:bg-[rgba(81,96,76,0.13)] hover:text-[var(--app-accent)]"
+        className="size-[42px] cursor-pointer rounded-lg border-0 text-[var(--app-accent)] hover:bg-[rgba(81,96,76,0.13)] hover:text-[var(--app-accent)] justify-self-end"
         onClick={onToggle}
         size="icon"
         type="button"
